@@ -1,5 +1,9 @@
 package com.example.newsapp
 
+// FIX #1: ADD THESE TWO IMPORTS
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,6 +32,9 @@ fun MainSearchScreen() {
     var searchTerm by remember { mutableStateOf("") }
     val isSearchButtonEnabled = searchTerm.isNotBlank()
 
+    // FIX #2: GET THE CONTEXT HERE
+    val context = LocalContext.current
+
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -45,7 +52,13 @@ fun MainSearchScreen() {
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { /* goto SourcesActivity */ },
+            onClick = {
+                // Now 'Intent' and 'context' are recognized!
+                val intent = Intent(context, SourcesActivity::class.java).apply {
+                    putExtra("SEARCH_TERM", searchTerm)
+                }
+                context.startActivity(intent)
+            },
             enabled = isSearchButtonEnabled,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -53,8 +66,12 @@ fun MainSearchScreen() {
         }
         Spacer(modifier = Modifier.height(12.dp))
 
+
         Button(
-            onClick = { /* goto to MapsActivity  */ },
+            onClick = {
+                val intent = Intent(context, MapsActivity::class.java)
+                context.startActivity(intent)
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Local News")
@@ -62,7 +79,11 @@ fun MainSearchScreen() {
         Spacer(modifier = Modifier.height(12.dp))
 
         Button(
-            onClick = { /* go to TopHeadlinesActivity  */ },
+            onClick = {
+                // Change this from the TODO comment
+                val intent = Intent(context, TopHeadlinesActivity::class.java)
+                context.startActivity(intent)
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Top Headlines")

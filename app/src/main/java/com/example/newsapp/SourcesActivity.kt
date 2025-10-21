@@ -1,26 +1,34 @@
 package com.example.newsapp
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.newsapp.data.Source
 import com.example.newsapp.ui.theme.NewsAppTheme
 
-data class FakeSource(val name: String, val description: String)
 
 class SourcesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val searchTerm = intent.getStringExtra("SEARCH_TERM") ?: "No search term"
+
         setContent {
             NewsAppTheme {
-                SourcesScreen()
+                SourcesScreen(searchTerm = searchTerm)
             }
         }
     }
@@ -28,23 +36,33 @@ class SourcesActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SourcesScreen() {
-    val fakeSources = listOf(
-        FakeSource("TechWeekly", "Your daily dose of tech news."),
-        FakeSource("Finance Hub", "All about markets and money."),
-        FakeSource("Global Sports", "Scores and highlights from around the world."),
-        FakeSource("Health Matters", "Tips for a healthier lifestyle.")
-    )
+fun SourcesScreen(
+    searchTerm: String,
+    viewModel: SourcesViewModel = viewModel()
+)  {
+    val sources by viewModel.sources.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val context = LocalContext.current
 
-    val categories = listOf("General", "Technology", "Business", "Sports")
+    val categories = listOf("General", "Technology", "Business", "Sports", "Health", "Science", "Entertainment")
     var expanded by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf(categories[0]) }
 
+    LaunchedEffect(selectedCategory) {
+        viewModel.fetchSources(selectedCategory)
+    }
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Search for: 'Android'", style = MaterialTheme.typography.titleLarge)
+        Text("Search for: '$searchTerm'", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
 
-        Button(onClick = { /* Does nothing for now */ }) {
+        Button(onClick = {
+            val intent = Intent(context, ResultsActivity::class.java).apply {
+                putExtra("SEARCH_TERM", searchTerm)
+            }
+            context.startActivity(intent)
+        }) {
             Text("Skip Source Selection")
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -79,17 +97,40 @@ fun SourcesScreen() {
         }
         Spacer(modifier = Modifier.height(16.dp))
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(fakeSources) { source ->
-                SourceItem(source = source)
+        Box(modifier = Modifier.fillMaxWidth()) {
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (error != null) {
+                Text(
+                    text = error!!,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(sources) { source ->
+                        SourceItem(source = source, onClick = {
+                            val intent = Intent(context, ResultsActivity::class.java).apply {
+                                putExtra("SEARCH_TERM", searchTerm)
+                                putExtra("SOURCE_ID", source.id)
+                                putExtra("SOURCE_NAME", source.name)
+                            }
+                            context.startActivity(intent)
+                        })
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun SourceItem(source: FakeSource) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+fun SourceItem(source: Source, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = source.name, style = MaterialTheme.typography.bodyLarge)
             Text(text = source.description, style = MaterialTheme.typography.bodyMedium)
@@ -101,6 +142,6 @@ fun SourceItem(source: FakeSource) {
 @Composable
 fun SourcesScreenPreview() {
     NewsAppTheme {
-        SourcesScreen()
+        SourcesScreen(searchTerm = "Android")
     }
 }
